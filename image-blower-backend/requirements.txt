@@ -1,5 +1,5 @@
 flask
-torch==2.0.1
+torch==2.0.0
 realesrgan
 basicsr
 facexlib
