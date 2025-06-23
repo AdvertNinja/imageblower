@@ -1,7 +1,7 @@
-flask
-torch==2.5.0
-realesrgan
-basicsr
-facexlib
-opencv-python
-Pillow
+flask==2.2.5
+torch==2.0.0
+realesrgan==0.3.0
+basicsr==1.4.2
+facexlib==0.2.5
+opencv-python==4.5.5.64
+Pillow==9.5.0
