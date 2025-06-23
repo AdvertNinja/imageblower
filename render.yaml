@@ -3,10 +3,9 @@ services:
     name: imageblower
     env: python
     plan: free
-buildCommand: |
-  pip install torch==2.5.0
-  pip install -r requirements.txt
-
+    buildCommand: |
+      pip install torch==2.5.0
+      pip install -r requirements.txt
     startCommand: |
       curl -L -o weights/RealESRGAN_x2plus.pth https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5/RealESRGAN_x2plus.pth &&
       python app.py
