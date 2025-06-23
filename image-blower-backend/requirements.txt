@@ -1,0 +1,7 @@
+flask
+torch==2.0.1
+realesrgan
+basicsr
+facexlib
+opencv-python
+Pillow
