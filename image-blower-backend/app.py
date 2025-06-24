@@ -43,7 +43,7 @@ def load_model():
         model = RealESRGANer(
             scale=4,
             model_path=model_path,
-            model=model_net,
+            model=None,
             device=device,
             tile=0,  # můžeš nastavit např. 128 pro nižší paměť
             tile_pad=10,
