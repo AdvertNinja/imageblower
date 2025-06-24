@@ -8,8 +8,9 @@ from flask_cors import CORS
 from io import BytesIO
 from PIL import Image
 
-# Import RealESRGAN
-from realesrgan import RealESRGAN
+# Správný import
+from realesrgan import RealESRGANer
+from basicsr.archs.rrdbnet_arch import RRDBNet
 
 app = Flask(__name__)
 CORS(app, origins=["https://cemex.advert.ninja"])
@@ -23,7 +24,7 @@ def load_model():
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model_path = os.path.join("weights", "realesr-general-x4v3.pth")
 
-        # Stáhnout model pokud neexistuje
+        # Stáhnout model pokud chybí
         if not os.path.exists(model_path):
             print("[MODEL] Stahuji model z externího URL...")
             url = "https://cemex.advert.ninja/tools/imageblower/weights/realesr-general-x4v3.pth"
@@ -35,8 +36,20 @@ def load_model():
                         f.write(chunk)
             print("[MODEL] Model úspěšně stažen.")
 
-        model = RealESRGAN(device, scale=4)
-        model.load_weights(model_path)
+        # Inicializace základní architektury
+        model_net = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64,
+                            num_block=23, num_grow_ch=32, scale=4)
+
+        model = RealESRGANer(
+            scale=4,
+            model_path=model_path,
+            model=model_net,
+            device=device,
+            tile=0,  # můžeš nastavit např. 128 pro nižší paměť
+            tile_pad=10,
+            pre_pad=0,
+            half=False  # True pokud běžíš na CUDA + máš FP16 model
+        )
         print("[MODEL] Model načten.")
     except Exception as e:
         print(f"[MODEL] Chyba při načítání modelu: {e}")
@@ -56,11 +69,11 @@ def upscale_image():
 
     file = request.files['image']
     image = Image.open(file.stream).convert("RGB")
+    input_np = np.array(image)[:, :, ::-1]  # RGB → BGR pro OpenCV kompatibilitu
 
     try:
-        input_np = np.array(image)
-        output_np = model.predict(input_np)
-        output_img = Image.fromarray(output_np)
+        output_np, _ = model.enhance(input_np, outscale=1)
+        output_img = Image.fromarray(output_np[:, :, ::-1])  # BGR → RGB
 
         output = BytesIO()
         output_img.save(output, format='PNG')
