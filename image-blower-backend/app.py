@@ -5,11 +5,13 @@ from PIL import Image
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), 'real_esrgan_local'))
-from realesrgan.real_esrgan import RealESRGAN
-
-
+import urllib.request
 import torch
+
+# Přidej cestu k modulu Real-ESRGAN
+sys.path.append(os.path.join(os.path.dirname(__file__), 'real_esrgan_local'))  # přizpůsob název složky
+
+from realesrgan.real_esrgan import RealESRGAN
 
 app = Flask(__name__)
 CORS(app, origins=["https://cemex.advert.ninja"])
@@ -21,10 +23,21 @@ def load_model():
     global model
     try:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        model_path = os.path.join("weights", "RealESRGAN_x2plus.pth")
-        model = RealESRGAN(device, scale=2)
+        weights_dir = "weights"
+        os.makedirs(weights_dir, exist_ok=True)
+
+        model_path = os.path.join(weights_dir, "realesr-general-x4v3.pth")
+        model_url = "https://cemex.advert.ninja/tools/imageblower/weights/realesr-general-x4v3.pth"
+
+        if not os.path.exists(model_path):
+            print(f"[MODEL] Stahuji model z {model_url}...")
+            urllib.request.urlretrieve(model_url, model_path)
+            print("[MODEL] Model stažen.")
+
+        model = RealESRGAN(device, scale=4)
         model.load_weights(model_path)
         print("[MODEL] Model RealESRGAN načten.")
+
     except Exception as e:
         print(f"[MODEL] Chyba při načítání modelu: {e}")
 
@@ -59,4 +72,3 @@ def upscale_image():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
