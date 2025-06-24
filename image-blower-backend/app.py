@@ -75,7 +75,7 @@ def upscale_image():
     input_np = np.array(image)[:, :, ::-1]  # RGB → BGR
 
     try:
-        output_np, _ = model.enhance(input_np, outscale=1)
+        output_np, _ = model.enhance(input_np, outscale=2)
         output_img = Image.fromarray(output_np[:, :, ::-1])  # BGR → RGB
 
         output = BytesIO()
