@@ -38,7 +38,7 @@ def load_model():
 
         # Inicializace základní architektury
         model_net = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64,
-                            num_block=23, num_grow_ch=32, scale=4)
+                            num_block=66, num_grow_ch=32, scale=4)
 
         model = RealESRGANer(
             scale=4,
