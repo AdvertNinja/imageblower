@@ -54,11 +54,14 @@
   const fileInput = document.getElementById('fileInput');
   const blowerLog = document.getElementById('blowerLog');
 
-  function blowerLogAdd(message) {
-    console.log('%cBlower:', 'background: black; color: #00ffcc; padding: 5px; border-radius: 3px; font-weight: 600; font-family: Poppins, sans-serif;', message);
+  const BACKEND_URL = 'https://imageblower.onrender.com/upscale'; // <-- Uprav pokud máš jinou doménu
+
+  function blowerLogAdd(message, detail = null) {
+    const formatted = `[BLOWER] ${message}`;
     const li = document.createElement('li');
     li.textContent = message;
     blowerLog.appendChild(li);
+    console.log(`%c${formatted}`, 'color:#00ffff; font-weight:bold; background:black; padding:4px;', detail ?? '');
   }
 
   dropzone.addEventListener('click', () => fileInput.click());
@@ -88,16 +91,21 @@
     const formData = new FormData();
     formData.append('image', file);
 
-    blowerLogAdd("Uploading image...");
+    blowerLogAdd("Nahrávám obrázek...");
+    console.log("🟡 Posílám požadavek na backend:", BACKEND_URL);
 
     try {
-      const response = await fetch('https://your-backend.onrender.com/upscale', {
+      const response = await fetch(BACKEND_URL, {
         method: 'POST',
         body: formData
       });
 
+      blowerLogAdd("Čekám na odpověď ze serveru...");
+      console.log("🟢 Stav odpovědi:", response.status);
+
       if (!response.ok) {
-        blowerLogAdd("Upscaling failed.");
+        blowerLogAdd("Upscaling selhal.");
+        console.error("❌ Backend vrátil chybu:", await response.text());
         return;
       }
 
@@ -109,13 +117,15 @@
       img.className = 'preview';
       document.body.appendChild(img);
 
-      blowerLogAdd("Image blown up successfully!");
+      blowerLogAdd("Hotovo! Obrázek je nafouklej.");
+      console.log("✅ Upscaling proběhl úspěšně.");
     } catch (err) {
-      console.error(err);
-      blowerLogAdd("Something went wrong.");
+      blowerLogAdd("Něco se pokazilo.");
+      console.error("💥 Výjimka při fetchi:", err);
     }
   }
 </script>
+
 
 </body>
 </html>
