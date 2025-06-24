@@ -13,7 +13,8 @@ from realesrgan import RealESRGANer
 from basicsr.archs.rrdbnet_arch import RRDBNet
 
 app = Flask(__name__)
-CORS(app, origins=["https://cemex.advert.ninja"])
+CORS(app, resources={r"/upscale": {"origins": "https://cemex.advert.ninja"}})
+
 
 model = None
 
