@@ -4,8 +4,11 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'real_esrgan_local'))
+from realesrgan.real_esrgan import RealESRGAN
 
-from realesrgan import RealESRGAN
+
 import torch
 
 app = Flask(__name__)
