@@ -1,8 +1,9 @@
 flask==2.2.5
+flask_cors==3.0.10
 realesrgan==0.3.0
 basicsr==1.4.2.0
 facexlib==0.2.5
 opencv-python==4.5.5.64
 Pillow==9.5.0
-torch==2.0.1
-flask-cors
+torch==1.13.1
+numpy==1.24.4
