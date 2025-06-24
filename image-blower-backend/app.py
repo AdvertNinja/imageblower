@@ -1,19 +1,13 @@
-import os
-import sys
-import requests
-import torch
-import numpy as np
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
+import os, requests, torch, numpy as np
 from io import BytesIO
 from PIL import Image
-
-# Import modelových tříd
 from realesrgan import RealESRGANer
 from basicsr.archs.rrdbnet_arch import RRDBNet
 
 app = Flask(__name__)
-CORS(app, resources={r"/upscale": {"origins": "https://cemex.advert.ninja"}})
+CORS(app, resources={r"/upscale": {"origins": ["https://cemex.advert.ninja"]}})
 
 model = None
 
