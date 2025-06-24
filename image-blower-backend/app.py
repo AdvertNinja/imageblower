@@ -1,35 +1,49 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
+from io import BytesIO
 from PIL import Image
-import io
-import torch
-from realesrgan import RealESRGANer
-from basicsr.archs.rrdbnet_arch import RRDBNet
+import time
 
+# Inicializace Flask app
 app = Flask(__name__)
+CORS(app, origins=["https://cemex.advert.ninja"])  # povolí požadavky z tvého webu
 
-# Inicializace modelu při startu
-model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=2)
-upsampler = RealESRGANer(
-    scale=2,
-    model_path='weights/RealESRGAN_x2plus.pth',
-    model=model,
-    tile=0,
-    tile_pad=10,
-    pre_pad=0,
-    half=False,
-    device=torch.device('cpu')
-)
+@app.route('/')
+def home():
+    return 'ImageBlower backend je online 🎈'
 
 @app.route('/upscale', methods=['POST'])
-def upscale():
+def upscale_image():
     if 'image' not in request.files:
-        return {'success': False, 'error': 'No image uploaded'}, 400
+        print("[SERVER] Obrázek nebyl nahrán.")
+        return jsonify({'error': 'No image uploaded'}), 400
 
     file = request.files['image']
-    img = Image.open(file.stream).convert('RGB')
-    output, _ = upsampler.enhance(img)
+    print(f"[SERVER] Přijatý soubor: {file.filename}")
 
-    buf = io.BytesIO()
-    output.save(buf, format='PNG')
-    buf.seek(0)
-    return send_file(buf, mimetype='image/png')
+    try:
+        image = Image.open(file.stream)
+        original_size = image.size
+
+        # Vytvoř jednoduchou "upscale" logiku (např. 2× větší rozměr)
+        upscale_factor = 2
+        new_size = (image.width * upscale_factor, image.height * upscale_factor)
+        upscaled = image.resize(new_size, Image.LANCZOS)
+
+        print(f"[SERVER] Upscalováno z {original_size} na {new_size}")
+
+        # Výstup do paměti
+        output = BytesIO()
+        upscaled.save(output, format='PNG')
+        output.seek(0)
+
+        return send_file(output, mimetype='image/png')
+
+    except Exception as e:
+        print(f"[SERVER] Chyba při zpracování obrázku: {e}")
+        return jsonify({'error': 'Upscaling failed', 'message': str(e)}), 500
+
+# Spuštění serveru
+if __name__ == '__main__':
+    print("[SERVER] Spouštím backend na 0.0.0.0:10000")
+    app.run(host='0.0.0.0', port=10000)
