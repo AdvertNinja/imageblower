@@ -1,8 +1,25 @@
+import os
+import subprocess
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 from io import BytesIO
 from PIL import Image
 
+# 🟢 Inicializace modelu
+model_path = 'weights/RealESRGAN_x2plus.pth'
+os.makedirs('weights', exist_ok=True)
+
+if not os.path.exists(model_path):
+    print("[INIT] Stahuji model...")
+    result = subprocess.run([
+        "curl", "-L", "-o", model_path,
+        "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5/RealESRGAN_x2plus.pth"
+    ])
+    if result.returncode != 0:
+        print("[ERROR] Selhalo stažení modelu.")
+        exit(1)
+
+# 🟢 Flask server
 app = Flask(__name__)
 CORS(app, origins=["https://cemex.advert.ninja"])
 
