@@ -8,13 +8,12 @@ from flask_cors import CORS
 from io import BytesIO
 from PIL import Image
 
-# Správný import
+# Import modelových tříd
 from realesrgan import RealESRGANer
 from basicsr.archs.rrdbnet_arch import RRDBNet
 
 app = Flask(__name__)
 CORS(app, resources={r"/upscale": {"origins": "https://cemex.advert.ninja"}})
-
 
 model = None
 
@@ -25,9 +24,9 @@ def load_model():
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model_path = os.path.join("weights", "realesr-general-x4v3.pth")
 
-        # Stáhnout model pokud chybí
+        # Stáhni model, pokud neexistuje
         if not os.path.exists(model_path):
-            print("[MODEL] Stahuji model z externího URL...")
+            print("[MODEL] Stahuji model z URL...")
             url = "https://cemex.advert.ninja/tools/imageblower/weights/realesr-general-x4v3.pth"
             os.makedirs("weights", exist_ok=True)
             with requests.get(url, stream=True) as r:
@@ -37,21 +36,29 @@ def load_model():
                         f.write(chunk)
             print("[MODEL] Model úspěšně stažen.")
 
-        # Inicializace základní architektury
-        model_net = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64,
-                            num_block=66, num_grow_ch=32, scale=4)
+        # Vytvoření instance RRDBNet
+        model_net = RRDBNet(
+            num_in_ch=3,
+            num_out_ch=3,
+            num_feat=64,
+            num_block=66,         # 💡 doporučeno pro realesr-general-x4v3
+            num_grow_ch=32,
+            scale=4
+        )
 
         model = RealESRGANer(
             scale=4,
             model_path=model_path,
-            model=None,
+            model=model_net,     # ✅ hlavní oprava zde
             device=device,
-            tile=0,  # můžeš nastavit např. 128 pro nižší paměť
+            tile=0,
             tile_pad=10,
             pre_pad=0,
-            half=False  # True pokud běžíš na CUDA + máš FP16 model
+            half=False
         )
-        print("[MODEL] Model načten.")
+
+        print("[MODEL] Model načten a připraven.")
+
     except Exception as e:
         print(f"[MODEL] Chyba při načítání modelu: {e}")
 
@@ -70,7 +77,7 @@ def upscale_image():
 
     file = request.files['image']
     image = Image.open(file.stream).convert("RGB")
-    input_np = np.array(image)[:, :, ::-1]  # RGB → BGR pro OpenCV kompatibilitu
+    input_np = np.array(image)[:, :, ::-1]  # RGB → BGR
 
     try:
         output_np, _ = model.enhance(input_np, outscale=1)
@@ -82,6 +89,7 @@ def upscale_image():
         return send_file(output, mimetype='image/png')
 
     except Exception as e:
+        print(f"[ERROR] Upscaling selhal: {e}")
         return jsonify({'error': 'Upscaling failed', 'message': str(e)}), 500
 
 if __name__ == "__main__":
