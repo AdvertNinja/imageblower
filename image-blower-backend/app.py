@@ -3,8 +3,9 @@ from flask_cors import CORS
 import os, requests, torch, numpy as np
 from io import BytesIO
 from PIL import Image
+
 from realesrgan import RealESRGANer
-from basicsr.archs.rrdbnet_arch import RRDBNet
+from basicsr.archs.srvgg_arch import SRVGGNetCompact  # ✅ správný import
 
 app = Flask(__name__)
 CORS(app, resources={r"/upscale": {"origins": ["https://cemex.advert.ninja"]}})
@@ -30,20 +31,20 @@ def load_model():
                         f.write(chunk)
             print("[MODEL] Model úspěšně stažen.")
 
-        # Vytvoření instance RRDBNet
-        model_net = RRDBNet(
+        # ✅ Oprava: použijeme správný model pro realesr-general-x4v3
+        model_net = SRVGGNetCompact(
             num_in_ch=3,
             num_out_ch=3,
             num_feat=64,
-            num_block=66,         # 💡 doporučeno pro realesr-general-x4v3
-            num_grow_ch=32,
-            scale=4
+            num_conv=32,
+            upscale=4,
+            act_type='prelu'
         )
 
         model = RealESRGANer(
             scale=4,
             model_path=model_path,
-            model=model_net,     # ✅ hlavní oprava zde
+            model=model_net,
             device=device,
             tile=0,
             tile_pad=10,
