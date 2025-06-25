@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os, requests, torch, numpy as np
 from io import BytesIO
 from PIL import Image
+import gc  # ✅ Přidáno pro RAM cleanup
 
 from realesrgan import RealESRGANer
 from basicsr.archs.srvgg_arch import SRVGGNetCompact  # ✅ správný import
@@ -19,7 +20,6 @@ def load_model():
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model_path = os.path.join("weights", "realesr-general-x4v3.pth")
 
-        # Stáhni model, pokud neexistuje
         if not os.path.exists(model_path):
             print("[MODEL] Stahuji model z URL...")
             url = "https://cemex.advert.ninja/tools/imageblower/weights/realesr-general-x4v3.pth"
@@ -30,7 +30,6 @@ def load_model():
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
             print("[MODEL] Model úspěšně stažen.")
-
 
         model_net = SRVGGNetCompact(
             num_in_ch=3,
@@ -46,7 +45,7 @@ def load_model():
             model_path=model_path,
             model=model_net,
             device=device,
-            tile=64,
+            tile=32,           # ✅ menší tile = menší nároky na paměť
             tile_pad=10,
             pre_pad=0,
             half=False
@@ -81,6 +80,12 @@ def upscale_image():
         output = BytesIO()
         output_img.save(output, format='PNG')
         output.seek(0)
+
+        # ✅ Uvolnění paměti
+        del input_np, output_np, output_img
+        torch.cuda.empty_cache()
+        gc.collect()
+
         return send_file(output, mimetype='image/png')
 
     except Exception as e:
