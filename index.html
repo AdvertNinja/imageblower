@@ -24,12 +24,23 @@
     body {
       overflow: hidden;
     }
-    img.preview {
-      max-width: 90%;
-      margin: 2rem auto;
-      display: block;
-      border: 1px solid #ccc;
+    a.download-link {
+      display: none;
+      margin-top: 1em;
+      font-size: 14px;
+      text-align: center;
+      color: #c00;
+      text-decoration: underline;
+    }
+    .refresh-btn {
+      background-color: #c00;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      margin-top: 20px;
       border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -47,21 +58,28 @@
     </form>
 
     <ul id="blowerLog"></ul>
+
+    <a id="backupDownload" class="download-link" href="#" download="upscaled.png">
+      If the download does not start automatically, click here to download it pls
+    </a>
+
+    <button class="refresh-btn" onclick="location.reload(true)">
+      Clean the chopping block
+    </button>
   </div>
 
 <script>
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
   const blowerLog = document.getElementById('blowerLog');
+  const backupDownload = document.getElementById('backupDownload');
+  const BACKEND_URL = 'https://imageblower.onrender.com/upscale';
 
-  const BACKEND_URL = 'https://imageblower.onrender.com/upscale'; // <-- Uprav pokud máš jinou doménu
-
-  function blowerLogAdd(message, detail = null) {
-    const formatted = `[BLOWER] ${message}`;
+  function logJarvis(message, detail = '') {
     const li = document.createElement('li');
     li.textContent = message;
     blowerLog.appendChild(li);
-    console.log(`%c${formatted}`, 'color:#00ffff; font-weight:bold; background:black; padding:4px;', detail ?? '');
+    console.log('%cJarvis:', 'background: white; color: #000; padding: 5px; border-radius: 3px; font-weight: 600; font-family: Poppins, sans-serif;', message, detail);
   }
 
   dropzone.addEventListener('click', () => fileInput.click());
@@ -88,41 +106,71 @@
     const file = fileInput.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('image', file);
+    const maxSizeMB = 20;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      logJarvis(`Image too large (max ${maxSizeMB} MB).`);
+      return;
+    }
 
-    blowerLogAdd("Nahrávám obrázek...");
-    console.log("🟡 Posílám požadavek na backend:", BACKEND_URL);
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.src = objectUrl;
 
-    try {
-      const response = await fetch(BACKEND_URL, {
-        method: 'POST',
-        body: formData
-      });
+    image.onload = async function () {
+      const maxWidth = 2000;
+      const maxHeight = 1500;
 
-      blowerLogAdd("Čekám na odpověď ze serveru...");
-      console.log("🟢 Stav odpovědi:", response.status);
-
-      if (!response.ok) {
-        blowerLogAdd("Upscaling selhal.");
-        console.error("❌ Backend vrátil chybu:", await response.text());
+      if (image.width > maxWidth || image.height > maxHeight) {
+        logJarvis(`Image resolution too large (max ${maxWidth}x${maxHeight}px).`);
+        URL.revokeObjectURL(objectUrl);
         return;
       }
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      URL.revokeObjectURL(objectUrl);
+      const formData = new FormData();
+      formData.append('image', file);
 
-      const img = document.createElement('img');
-      img.src = url;
-      img.className = 'preview';
-      document.body.appendChild(img);
+      logJarvis("Uploading your ingredients...");
+      const startTime = Date.now();
 
-      blowerLogAdd("Hotovo! Obrázek je nafouklej.");
-      console.log("✅ Upscaling proběhl úspěšně.");
-    } catch (err) {
-      blowerLogAdd("Něco se pokazilo.");
-      console.error("💥 Výjimka při fetchi:", err);
-    }
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: 'POST',
+          body: formData
+        });
+
+        const uploadTime = Date.now() - startTime;
+
+        if (!response.ok) {
+          logJarvis("Upscaling failed.");
+          console.error("Backend error:", await response.text());
+          return;
+        }
+
+        logJarvis("Upload completed. Request sent to backend.");
+        logJarvis("Awaiting upscaling response...");
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "upscaled.png";
+        a.click();
+
+        backupDownload.href = url;
+        backupDownload.style.display = "block";
+
+        const totalTime = Date.now() - startTime;
+        const minutes = Math.floor(totalTime / 60000);
+        const seconds = ((totalTime % 60000) / 1000).toFixed(1);
+        const timeText = `${minutes > 0 ? `${minutes} min ` : ''}${seconds} sec`;
+
+        logJarvis(`Upscaling completed. Output ready. Finished in ${timeText}.`);
+      } catch (err) {
+        logJarvis("Unexpected error during processing.");
+        console.error("Exception:", err);
+      }
+    };
   }
 </script>
 
