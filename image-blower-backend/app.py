@@ -12,10 +12,16 @@ from realesrgan import RealESRGANer
 from basicsr.archs.srvgg_arch import SRVGGNetCompact
 
 app = Flask(__name__)
-CORS(app, resources={r"/upscale": {"origins": ["https://cemex.advert.ninja"]}})
+
+ALLOWED_ORIGINS = [
+    "https://cemex.advert.ninja",
+    "http://cemex.advert.ninja",
+    "http://13.60.168.56:5000",
+    "http://localhost:5000"
+]
+CORS(app, resources={r"/upscale": {"origins": ALLOWED_ORIGINS}})
 
 model = None
-
 
 def load_model():
     global model
@@ -37,7 +43,7 @@ def load_model():
         num_feat=64,
         num_conv=32,
         upscale=4,
-        act_type="prelu",
+        act_type="prelu"
     )
 
     model = RealESRGANer(
@@ -48,24 +54,20 @@ def load_model():
         tile=0,
         tile_pad=10,
         pre_pad=0,
-        half=False,
+        half=False
     )
-
 
 @app.before_first_request
 def init_model():
     load_model()
 
-
 @app.route("/")
 def home():
     return "ImageBlower backend je online 🎈"
 
-
 @app.route("/ping", methods=["GET"])
 def ping():
     return "OK", 200
-
 
 @app.route("/upscale", methods=["POST"])
 def upscale_image():
@@ -79,7 +81,6 @@ def upscale_image():
     try:
         output_np, _ = model.enhance(input_np, outscale=2)
         output_img = Image.fromarray(output_np[:, :, ::-1])
-
         output = BytesIO()
         output_img.save(output, format="PNG")
         output.seek(0)
@@ -91,7 +92,6 @@ def upscale_image():
         return send_file(output, mimetype="image/png")
     except Exception as e:
         return jsonify({"error": "Upscaling failed", "message": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
