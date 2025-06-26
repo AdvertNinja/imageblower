@@ -1,20 +1,23 @@
-# Použijeme oficiální Python image jako základ
+# ─────────────────────────────────────────────────────────────
+# Image: advertninja/imageblower  (Python 3.10 + OpenCV CPU)
+# ─────────────────────────────────────────────────────────────
 FROM python:3.10-slim
 
-# Nainstalujeme potřebné systémové knihovny
+# ▸ Systémové závislosti pro OpenCV (libGL + glib)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libgl1 && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Nastavíme pracovní adresář v kontejneru
 WORKDIR /app
 
-# Zkopírujeme requirements a nainstalujeme Python závislosti
+# ▸ Python závislosti
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Zkopírujeme zbytek aplikace
+# ▸ Kód aplikace
 COPY . .
 
-# Nastavíme spouštěcí příkaz
+# ▸ Spuštění backendu
 CMD ["python", "image-blower-backend/app.py"]
