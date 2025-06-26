@@ -38,6 +38,8 @@ def load_model():
             with open(model_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
+        del r
+        gc.collect()
 
     model_net = SRVGGNetCompact(
         num_in_ch=3,
@@ -53,10 +55,10 @@ def load_model():
         model_path=model_path,
         model=model_net,
         device=device,
-        tile=128,
+        tile=32,         # 🔻 z 128 na 32
         tile_pad=10,
         pre_pad=0,
-        half=False
+        half=False       # můžeš zkusit True, pokud máš GPU
     )
 
 @app.before_first_request
@@ -66,25 +68,22 @@ def init_model():
 # ===== Root endpoint =====
 @app.route("/", methods=["GET", "POST", "OPTIONS"])
 def root():
-    # Pre-flight CORS
     if request.method == "OPTIONS":
         return "", 200
 
-    # Health check
     if request.method == "GET":
         return "ImageBlower backend je online 🎈", 200
 
-    # POST = upscale
     if "image" not in request.files:
         return jsonify(error="No image uploaded"), 400
 
     file = request.files["image"]
     image = Image.open(file.stream).convert("RGB")
-    input_np = np.array(image)[:, :, ::-1]  # BGR for RealESRGAN
+    input_np = np.array(image)[:, :, ::-1]  # RGB → BGR
 
     try:
         output_np, _ = model.enhance(input_np, outscale=2)
-        output_img = Image.fromarray(output_np[:, :, ::-1])  # back to RGB
+        output_img = Image.fromarray(output_np[:, :, ::-1])  # BGR → RGB
 
         buf = BytesIO()
         output_img.save(buf, format="PNG")
