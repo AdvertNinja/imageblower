@@ -55,7 +55,7 @@ def load_model():
         model_path=model_path,
         model=model_net,
         device=device,
-        tile=16,         # 🔻 z 128 na 32
+        tile=8,         
         tile_pad=10,
         pre_pad=0,
         half=False       # můžeš zkusit True, pokud máš GPU
