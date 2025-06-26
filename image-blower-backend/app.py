@@ -13,14 +13,16 @@ from basicsr.archs.srvgg_arch import SRVGGNetCompact
 
 app = Flask(__name__)
 
+# ===== CORS =====
 ALLOWED_ORIGINS = [
     "https://cemex.advert.ninja",
     "http://cemex.advert.ninja",
     "http://13.60.168.56:5000",
     "http://localhost:5000"
 ]
-CORS(app, resources={r"/upscale": {"origins": ALLOWED_ORIGINS}})
+CORS(app, resources={r"/": {"origins": ALLOWED_ORIGINS}})
 
+# ===== Model loader =====
 model = None
 
 def load_model():
@@ -61,37 +63,47 @@ def load_model():
 def init_model():
     load_model()
 
-@app.route("/")
-def home():
-    return "ImageBlower backend je online 🎈"
+# ===== Root endpoint =====
+@app.route("/", methods=["GET", "POST", "OPTIONS"])
+def root():
+    # Pre-flight CORS
+    if request.method == "OPTIONS":
+        return "", 200
 
-@app.route("/ping", methods=["GET"])
-def ping():
-    return "OK", 200
+    # Health check
+    if request.method == "GET":
+        return "ImageBlower backend je online 🎈", 200
 
-@app.route("/upscale", methods=["POST"])
-def upscale_image():
+    # POST = upscale
     if "image" not in request.files:
-        return jsonify({"error": "No image uploaded"}), 400
+        return jsonify(error="No image uploaded"), 400
 
     file = request.files["image"]
     image = Image.open(file.stream).convert("RGB")
-    input_np = np.array(image)[:, :, ::-1]
+    input_np = np.array(image)[:, :, ::-1]  # BGR for RealESRGAN
 
     try:
         output_np, _ = model.enhance(input_np, outscale=2)
-        output_img = Image.fromarray(output_np[:, :, ::-1])
-        output = BytesIO()
-        output_img.save(output, format="PNG")
-        output.seek(0)
+        output_img = Image.fromarray(output_np[:, :, ::-1])  # back to RGB
 
+        buf = BytesIO()
+        output_img.save(buf, format="PNG")
+        buf.seek(0)
+
+        # cleanup
         del input_np, output_np, output_img
         torch.cuda.empty_cache()
         gc.collect()
 
-        return send_file(output, mimetype="image/png")
+        return send_file(buf, mimetype="image/png")
     except Exception as e:
-        return jsonify({"error": "Upscaling failed", "message": str(e)}), 500
+        return jsonify(error="Upscaling failed", message=str(e)), 500
 
+# ===== Simple ping =====
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "OK", 200
+
+# ===== Run locally =====
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
